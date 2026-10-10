@@ -36,11 +36,11 @@ class Agent:
             decision = self._parse(raw)
             if "final_answer" in decision:
                 traj.final_answer = decision["final_answer"]
-                traj.steps.append(Step(thought=raw, observation="（终止）"))
+                traj.steps.append(Step(thought=decision.get("thought", raw), observation="（终止）"))
                 break
             name = decision.get("action")
             args = decision.get("args", {}) or {}
-            step = Step(thought=raw, action={"name": name, "args": args})
+            step = Step(thought=decision.get("thought", raw), action={"name": name, "args": args})
             if self.tools is None or name not in [t.name for t in self.tools.list()]:
                 obs = Observation(content=f"未知工具：{name}", ok=False)
             else:

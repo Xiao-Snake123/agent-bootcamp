@@ -41,7 +41,11 @@ class LLMClient(ABC):
         ...
 
     def _accrue(self, prompt_tokens: int, completion_tokens: int, unit_price: float = 0.0):
-        """累计用量并在超限时抛错。unit_price 单位：美元/token。"""
+        """累计用量并在超限时抛错。unit_price 单位：美元/token。
+
+        注意：默认 0.0，成本护栏暂不真正触发；接入真实计费时须在调用处
+        传入真实单价（或读取 .env 单价配置），否则 CostLimitError 不会抛出。
+        """
         self.usage.prompt_tokens += prompt_tokens
         self.usage.completion_tokens += completion_tokens
         self.usage.cost += (prompt_tokens + completion_tokens) * unit_price
@@ -85,18 +89,31 @@ class MockLLMClient(LLMClient):
         import re
         import json
 
-        goal = messages[0]["content"] if messages else ""
+        # 取第一条用户消息作为目标（不再假设 messages[0] 一定是目标，
+        # 兼容 K2 之后引入 system 提示的情况）
+        goal = next((m["content"] for m in messages if m.get("role") == "user"), "")
         has_observation = any(m.get("role") == "tool" for m in messages)
 
         if has_observation:
             obs_list = [m["content"] for m in messages if m.get("role") == "tool"]
-            decision = {"final_answer": f"根据工具结果，结论是：{obs_list[-1]}"}
+            last = obs_list[-1]
+            decision = {
+                "thought": f"已拿到工具结果 {last}，可给出最终答案",
+                "final_answer": f"根据工具结果，结论是：{last}",
+            }
         elif "算" in goal and re.search(r"\d+\s*[\*\+\-\/]\s*\d+", goal):
             m = re.search(r"(\d+)\s*([\*\+\-\/])\s*(\d+)", goal)
             a, op, b = m.group(1), m.group(2), m.group(3)
-            decision = {"action": "calculator", "args": {"expr": f"{a}{op}{b}"}}
+            decision = {
+                "thought": f"目标要算 {a} {op} {b}，应调用 calculator 工具",
+                "action": "calculator",
+                "args": {"expr": f"{a}{op}{b}"},
+            }
         else:
-            decision = {"final_answer": f"（Mock）已理解目标：{goal}"}
+            decision = {
+                "thought": "无需调用工具，直接回答",
+                "final_answer": f"（Mock）已理解目标：{goal}",
+            }
 
         # 模拟少量 token 消耗，便于演示成本护栏
         self._accrue(len(goal) // 4 + 4, 8)

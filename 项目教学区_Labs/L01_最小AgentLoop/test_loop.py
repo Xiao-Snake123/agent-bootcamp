@@ -37,11 +37,21 @@ def test_agent_loop_terminates_with_trajectory():
 
 
 def test_unknown_tool_does_not_crash():
-    """未知工具应返回 ok=False 的观察，而不是让循环崩溃。"""
-    agent = _build_agent()
+    """未知工具应返回 ok=False 的观察（含"未知工具"），而不是让循环崩溃。"""
+
+    class UnknownToolMock(MockLLMClient):
+        def complete(self, messages, **kwargs):
+            return '{"thought": "故意调一个不存在的工具", "action": "nonexistent", "args": {}}'
+
+    reg = ToolRegistry()
+    reg.register(CalculatorTool())
+    agent = Agent(llm=UnknownToolMock(), tools=reg)
     answer, traj = agent.run("随便做点什么", max_steps=3)
-    # Mock 对无"算"的目标直接给最终答案，这里只验证不抛异常
-    assert isinstance(answer, str)
+
+    assert isinstance(answer, str)  # 不抛异常，循环可继续/正常结束
+    unknown_steps = [s for s in traj.steps if s.action.get("name") == "nonexistent"]
+    assert unknown_steps, "应触发未知工具分支"
+    assert "未知工具" in unknown_steps[0].observation
 
 
 def test_max_steps_cap():
