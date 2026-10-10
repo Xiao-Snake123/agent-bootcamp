@@ -1,10 +1,11 @@
-"""L02 演示：提示工程如何改变模型行为（离线、无需 Key）。
+"""L02 演示：提示工程如何改变模型行为 + 技能演练（离线、无需 Key）。
 
-构造四类 prompt 并喂给一个"真的读取 system 提示"的演示用 LLM，直观看到：
-  1) 有无系统提示 → 输出形态不同；
-  2) Few-shot 示例 → 模型模仿示例格式；
-  3) 结构化输出约束 → 模型只吐 JSON；
-  4) 上下文窗口 → 超长文本必须截断。
+构造四类提示并喂给"真的读取 system 提示"的演示用 LLM，直观看到：
+  ① 有无系统提示 → 输出形态不同；
+  ② Few-shot 示例 → 模型模仿示例格式；
+  ③ 结构化输出约束 → 模型只吐 JSON；
+  ④ 上下文窗口 → 超长文本必须截断；
+  ⑤ 技能演练（challenge）→ 糟糕提示 vs 好提示，模型行为差异。
 """
 
 import os
@@ -17,11 +18,12 @@ for _p in (_PARENT, _HERE):
         sys.path.insert(0, _p)
 
 import json
-from agent_core.llm import LLMClient
-from prompt import PromptBuilder, truncate_to_tokens, parse_json_block
+import agent_core.llm as llm_mod
+import prompt
+import challenge
 
 
-class DemoLLM(LLMClient):
+class DemoLLM(llm_mod.LLMClient):
     """演示用决策器：真的读取 system 提示来决定输出形态（离线、无网络）。"""
 
     def complete(self, messages, **kwargs):
@@ -50,12 +52,12 @@ def main():
     llm = DemoLLM()
 
     # 1) 无系统提示
-    m1 = PromptBuilder().with_query("这家店服务真差。").as_messages()
+    m1 = prompt.PromptBuilder().with_query("这家店服务真差。").as_messages()
     _show("① 无系统提示", m1)
     print("  →", llm.complete(m1))
 
     # 2) 加系统提示（语气约束）
-    m2 = (PromptBuilder()
+    m2 = (prompt.PromptBuilder()
           .with_system("你是一个简洁的评论分析助手，用一句话总结情感。")
           .with_query("这家店服务真差。")
           .as_messages())
@@ -63,7 +65,7 @@ def main():
     print("  →", llm.complete(m2))
 
     # 3) Few-shot 示例
-    m3 = (PromptBuilder()
+    m3 = (prompt.PromptBuilder()
           .with_system("你是情感分类器，模仿示例输出。")
           .with_few_shot([("物流很快", "正面"), ("包装破损", "负面")])
           .with_query("客服态度好")
@@ -73,7 +75,7 @@ def main():
 
     # 4) 结构化输出
     schema = {"type": "object", "properties": {"label": "string", "score": "number"}}
-    m4 = (PromptBuilder()
+    m4 = (prompt.PromptBuilder()
           .with_system("你是情感分类器。")
           .with_structured_output(schema)
           .with_query("这家店服务真差。")
@@ -81,13 +83,16 @@ def main():
     _show("④ 结构化输出", m4)
     out = llm.complete(m4)
     print("  →", out)
-    print("  parse_json_block →", parse_json_block(out))
+    print("  parse_json_block →", prompt.parse_json_block(out))
 
     # 5) 上下文窗口截断演示
     long_text = "字" * 1000
     print("\n=== ⑤ 上下文截断 ===")
     print("  原文长度", len(long_text),
-          "→ 截到 50 token:", truncate_to_tokens(long_text, 50))
+          "→ 截到 50 token:", prompt.truncate_to_tokens(long_text, 50))
+
+    # 6) 技能演练
+    challenge.run_challenge()
 
 
 if __name__ == "__main__":

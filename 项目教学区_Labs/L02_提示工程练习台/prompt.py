@@ -6,6 +6,11 @@
 - 同时提供 truncate_to_tokens 帮助理解"上下文窗口"硬上限，以及
   parse_json_block 帮助从模型输出里稳定抽取 JSON（结构化输出配套）。
 - 本文件零依赖、可离线跑，不 import agent_core，方便单测。
+
+前沿注记：真实项目里 system + few-shot 这类稳定前缀应走 **prompt caching**
+（Anthropic/OpenAI）降本提速；结构化输出优先用模型原生 structured outputs /
+function calling（见 K02 第六节），本 Builder 仅做协议层组装，提示"内容"由你按
+K02 第四节方法写。
 """
 
 import json
