@@ -1,0 +1,10 @@
+# 分层依赖（design_docs/03 §7）
+# base：P0–P9 基础 Lab 所需
+openai>=1.0
+pytest>=7.0
+
+# rag：K9 RAG 所需的向量库/嵌入（按需取消注释）
+# chromadb>=0.4
+
+# orchestration：K10 编排框架（按需取消注释）
+# langgraph>=0.0.40

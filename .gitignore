@@ -1,0 +1,10 @@
+# 密钥不入库（仅忽略真实 .env，.env.example 模板可提交）
+.env
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# Agent 环境目录（非项目源码）
+.workbuddy/
