@@ -42,7 +42,7 @@ class FunctionCallingAgent:
         self.llm = llm
         self.tools = tools
 
-    def run(self, goal: str, max_steps: int = 8):
+    def run(self, goal: str, max_steps: int = 8, retries: int = 1):
         messages = [{"role": "user", "content": goal}]
         tool_schemas = tools_to_openai_schema(self.tools)
         traj = []
@@ -59,19 +59,36 @@ class FunctionCallingAgent:
             if not calls:
                 final = decision.get("final_answer", str(decision))
                 break
-            for call in calls:
+            for idx, call in enumerate(calls):
                 name = call.get("name")
                 args = call.get("arguments", {}) or {}
+                call_id = call.get("id") or f"call_{idx}"
                 if name not in [t.name for t in self.tools.list()]:
                     obs = Observation(content=f"未知工具：{name}", ok=False)
                 else:
-                    obs = self.tools.dispatch(name, args)
+                    obs = self._dispatch_with_retry(name, args, retries)
                 traj.append({
                     "thought": decision.get("thought", ""),
-                    "action": {"name": name, "args": args},
+                    "action": {"name": name, "args": args, "tool_call_id": call_id},
                     "observation": obs.content,
                 })
-                messages.append({"role": "tool", "content": obs.content, "name": name})
+                messages.append({"role": "tool", "content": obs.content,
+                                 "name": name, "tool_call_id": call_id})
         else:
             final = "（达到步数上限，未给出最终答案）"
         return final, traj
+
+    def _dispatch_with_retry(self, name, args, retries):
+        """dispatch 执行；失败（ok=False）时有限次重试。
+
+        注意：重试只对"已注册但执行失败"的工具有意义（如真实 API 临时
+        错误）。Mock 工具的校验失败（ok=False）重试同样参数仍会失败，因此
+        当前 L3 离线演示里重试不会"救活"非法参数——这正说明参数校验应在
+        dispatch 前完成（呼应 K1 陷阱④）。
+        """
+        obs = self.tools.dispatch(name, args)
+        for _ in range(retries):
+            if obs.ok:
+                break
+            obs = self.tools.dispatch(name, args)
+        return obs

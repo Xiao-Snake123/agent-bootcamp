@@ -94,6 +94,17 @@ def main():
     # 6) 技能演练
     challenge.run_challenge()
 
+    # 7) Prompt Caching 节省估算（离线，呼应 K02 前沿实务）
+    print("\n=== ⑦ Prompt Caching 节省估算 ===")
+    long_system = ("你是严谨的评论分析助手，用一句话总结情感，"
+                   "并只输出 JSON。下面是必须遵守的 30 条约束……" * 20)
+    sav = prompt.estimate_cache_savings(long_system, n_rounds=10, query_text="这家店服务真差。")
+    print(f"  system tokens      : {sav['system_tokens']}")
+    print(f"  无缓存 10 轮总 token: {sav['no_cache_total']}")
+    print(f"  有缓存 10 轮总 token: {sav['with_cache_total']}")
+    print(f"  节省                : {sav['saved_tokens']} token（{sav['saved_pct']}%）")
+    print("  （真实 API 中这笔节省体现为 cache_read 低价 token，见 K02）")
+
 
 if __name__ == "__main__":
     main()

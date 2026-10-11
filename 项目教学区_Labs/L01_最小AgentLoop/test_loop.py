@@ -68,3 +68,24 @@ def test_max_steps_cap():
 
     assert len(traj.steps) <= 3
     assert "达到步数上限" in traj.final_answer
+
+
+def test_multi_step_loop_terminates_with_final():
+    """多步演示：首步调工具、次步据观察给最终答案，闭环收敛。"""
+
+    class TwoStepMock(MockLLMClient):
+        def complete(self, messages, **kwargs):
+            has_tool = any(m.get("role") == "tool" for m in messages)
+            if not has_tool:
+                return '{"action": "calculator", "args": {"expr": "5*5"}}'
+            return '{"final_answer": "正方形面积=25"}'
+
+    reg = ToolRegistry()
+    reg.register(CalculatorTool())
+    agent = Agent(llm=TwoStepMock(), tools=reg)
+    answer, traj = agent.run("算边长5正方形面积", max_steps=5)
+
+    actions = [s for s in traj.steps if s.action]
+    assert actions and actions[0].action["name"] == "calculator"
+    assert traj.final_answer == "正方形面积=25"
+    assert len(traj.steps) >= 2  # 至少：行动 + 终止

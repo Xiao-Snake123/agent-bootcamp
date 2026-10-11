@@ -22,14 +22,18 @@ class Trajectory:
 
 
 class Agent:
-    def __init__(self, llm, tools=None, memory=None):
+    def __init__(self, llm, tools=None, memory=None, system=None):
         self.llm = llm
         self.tools = tools   # ToolRegistry 或 None
         self.memory = memory # Memory 或 None（K4 启用）
+        self.system = system or ""  # 系统提示（K10 Skill 按需注入，其他 Lab 不传则空）
 
     def run(self, goal: str, max_steps: int = 10):
         """最小闭环：思考→动作→观察→再思考→终止。返回 (最终答案, Trajectory)。"""
-        messages = [{"role": "user", "content": goal}]
+        messages = []
+        if self.system:
+            messages.append({"role": "system", "content": self.system})
+        messages.append({"role": "user", "content": goal})
         traj = Trajectory()
         for _ in range(max_steps):
             raw = self.llm.complete(messages)

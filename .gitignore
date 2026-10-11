@@ -8,3 +8,9 @@ __pycache__/
 
 # Agent 环境目录（非项目源码）
 .workbuddy/
+.codebuddy/
+
+# 测试/运行缓存（pytest、L11 checkpoint 等运行产物）
+.pytest_cache/
+*_checkpoint.json
+_cp_test.json

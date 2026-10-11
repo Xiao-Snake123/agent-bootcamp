@@ -12,17 +12,22 @@
 
 ## 二、核心概念（带前沿注记）
 - **Token**：模型最小处理单位（英文≈1 词/token，中文≈1–2 字/token）。价格、延迟、上下文长度都按 token 计。**前沿实务**：把稳定的 system + few-shot 前缀用 **prompt caching**（Anthropic/OpenAI 均支持）缓存，可大幅降本提速——Agent 每轮都重发 system，缓存收益尤其大。
-- **上下文窗口（Context Window）**：单次可见 token 上限，主流 128k–200k，Gemini 1.5/2 已达 1M–2M。**前沿实务**：窗口大了仍不能"全塞"——长文**中间信息易丢失**（lost-in-the-middle, Liu et al. 2023），且长上下文更贵。所以 K4 记忆压缩 / K8 检索（RAG）依旧必要。
-- **系统提示（System Prompt）**：定角色、规则、输出格式的"稳定指令"，优先级最高，通常每轮开头注入一次。前沿做法：放**不变的行为约束**，配合 caching；用 delimiter（如 `#####`）把不可信用户输入与指令隔离，降低注入风险（K11 深入）。
+- **上下文窗口（Context Window）**：单次可见 token 上限，主流 128k–200k，Gemini 1.5/2 已达 1M–2M。**前沿实务**：窗口大了仍不能"全塞"——长文**中间信息易丢失**（lost-in-the-middle, Liu et al. 2023），且长上下文更贵。所以 K4 记忆压缩 / K8 检索（RAG）依旧必要；2025 更进一步的共识是 **Context Engineering**：动态挑选"该注入什么"，而非堆长上下文。
+- **系统提示（System Prompt）**：定角色、规则、输出格式的"稳定指令"，优先级最高，通常每轮开头注入一次。前沿做法：放**不变的行为约束**，配合 caching；用 delimiter（如 `#####`）把不可信用户输入与指令隔离，降低注入风险（K12 深入）。
 - **用户提示（User Prompt）**：本次真实输入 / 目标（来自 K1 的 `goal`）。
 - **Few-shot（少样本）**：在 system 之后、query 之前放 `(输入, 期望输出)` 示范，让模型"照葫芦画瓢"。**前沿实务**：不是越多越好——示例与任务分布不符会"污染"输出；更优是**检索式 few-shot**（按相似度从样例库挑，思想同 K8 RAG）；且示例顺序敏感，典型样本宜靠前。
 - **结构化输出（Structured Output）**：要求模型输出贴合 schema 的结果。三档（见第六节）：JSON mode（仅保证格式合法）< native structured outputs（强制贴合 schema）< function calling（工具即结构化接口，本教学主线）。
 
 ## 三、工作原理
-发给模型的 `messages` 是有序列表：
+发给模型的 `messages` 是有序列表，顺序固定：
 
-```
-[system] → [user/assistant 交替的 few-shot] → [user 真实 query]
+```mermaid
+flowchart LR
+    S[system:角色+约束+caching] --> F[few-shot:user/assistant 对]
+    F --> Q[user:真实 query]
+    Q --> M[model 自回归生成]
+    note over S,Q: 顺序=system→shots→query，乱序会拉低质量
+    note over S: lost-in-the-middle:过长 system/上下文，中间信息易丢失
 ```
 
 模型按此序列自回归生成下一段。Agent 的关键技巧：
@@ -96,8 +101,8 @@ L2 的 `PromptBuilder` 就是把这套组装变成可复用代码，产出可直
 4. **few-shot 污染？** 示例与分布不符 → 换成同分布 / 检索式 few-shot。
 5. **schema 过严拒答？** 放宽 `required` / 枚举，或允许 `null`。
 6. **长文失效？** 信息在中间丢失 → 前置关键项 / 摘要 / RAG（K4/K8）。
-7. **被注入？** 用户"忽略以上指令" → delimiter 隔离 + K11 防护。
-提示也要**评测**：用固定样例集 + LLM-as-judge 打分（呼应 K11），而非肉眼看一条。
+7. **被注入？** 用户"忽略以上指令" → delimiter 隔离 + K12 防护。
+提示也要**评测**：用固定样例集 + LLM-as-judge 打分（呼应 K12），而非肉眼看一条。
 
 ## 六、主流方案与前沿工具链
 - **JSON mode**：模型只保证输出合法 JSON，不保证贴合你的 schema（最弱，仅适合简单场景）。
@@ -105,12 +110,12 @@ L2 的 `PromptBuilder` 就是把这套组装变成可复用代码，产出可直
 - **Function calling**：把"工具"当成结构化接口，模型原生返回 `tool_calls`（K3 深入，本教学主线）。
 - **Prompt caching**：缓存稳定前缀（system + few-shot），降本提速，Agent 每轮重发 system 受益大。
 - **检索式 / 动态 few-shot**：按任务相似度从样例库挑示例，思想同 RAG（K8）。
-- **LLM-as-judge**：用模型给提示输出打分，形成"写→评→改"闭环（K11）。
-- **分隔符 + 特权指令标记**：隔离不可信输入、标记系统指令，注入防护雏形（K11）。
+- **LLM-as-judge**：用模型给提示输出打分，形成"写→评→改"闭环（K12）。
+- **分隔符 + 特权指令标记**：隔离不可信输入、标记系统指令，注入防护雏形（K12）。
 
 ## 七、常见陷阱
 1. **忽视上下文窗口 / lost-in-the-middle**：长文中间信息易丢，别全塞；用摘要/RAG。
-2. **系统提示被注入覆盖**：用户"忽略以上指令"可能越权；delimiter 隔离 + K11 防护。
+2. **系统提示被注入覆盖**：用户"忽略以上指令"可能越权；delimiter 隔离 + K12 防护。
 3. **Few-shot 与分布不符**：示例格式错 → 模型学歪；用同分布/检索式。
 4. **不要求结构化输出**：自由发挥 → 代码解析崩（L1 必须坚持 JSON 决策）。
 5. **schema 过严导致拒答**：`required`/枚举太窄 → 模型拒答；允许必要 `null`。
@@ -122,10 +127,11 @@ L2 的 `PromptBuilder` 就是把这套组装变成可复用代码，产出可直
 2. 下面这条提示缺什么？改成能稳定产出"三点要点"列表的版本：`总结一下这篇文章`。
 3. 什么场景该用 function calling 而非 JSON mode？举一例。
 4. 长上下文窗口普及后，为何仍需要 RAG / 摘要？（用 lost-in-the-middle 解释）
+5. （开放题）设计一个能抵御 prompt injection 的 system 提示骨架：如何用 delimiter 隔离不可信输入？如何给"特权系统指令"打标记，让模型优先于用户输入执行？画出你的 messages 结构。
 
 ## 九、动手引子
 → 进入 `项目教学区_Labs/L02_提示工程练习台/`：
-- 运行 `python main.py` 看四类提示下输出形态，以及 ⑥ 技能演练（糟糕提示 vs 参考好提示 vs 你的提示）；
+- 运行 `python main.py` 看四类提示下输出形态，以及⑥技能演练（糟糕提示 vs 参考好提示 vs 你的提示）；
 - 打开 `challenge.py`，把 `YOUR_SYSTEM` 按第四节方法写成好提示，再跑 `python main.py` 看模型是否吐合规 JSON；
 - `pytest test_prompt.py` 验收 `PromptBuilder`。
-> 记住分工：`PromptBuilder` 只负责**组装**消息，提示**内容**要你按本节方法写——会用工具 ≠ 会写提示。
+> 记住分工：`PromptBuilder` 只负责**组装**消息，提示**内容**要你按本节方法写——会用工具 ≠ 会写提示。另外留意 `main.py` 里新增的 **prompt caching 节省演示**：稳定 system 被缓存后，多轮对话只在第一次计 system 的 token。

@@ -68,3 +68,11 @@ def test_challenge_good_prompt_yields_json():
         [{"role": "system", "content": challenge.REFERENCE_GOOD},
          {"role": "user", "content": "来3个披萨"}])
     assert '"intent"' in out and "披萨" in out
+
+
+def test_cache_savings_is_positive():
+    """验收：prompt caching 在多轮下确实节省 token（离线估算）。"""
+    sav = prompt.estimate_cache_savings("长 system 约束", n_rounds=5, query_text="q")
+    assert sav["with_cache_total"] < sav["no_cache_total"]
+    assert sav["saved_tokens"] > 0
+    assert sav["saved_pct"] > 0

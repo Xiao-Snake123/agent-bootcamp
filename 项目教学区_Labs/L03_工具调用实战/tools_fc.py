@@ -1,4 +1,4 @@
-"""L03 演示工具：天气查询 + 计算器，带 JSON-Schema 参数。"""
+"""L03 演示工具：天气查询 + 计算器 + 搜索，带 JSON-Schema 参数。"""
 
 import re
 from agent_core.tools import Tool, Observation
@@ -27,3 +27,19 @@ class CalculatorTool(Tool):
         except Exception as e:
             return Observation(content=f"计算出错：{e}", ok=False)
         return Observation(content=str(result))
+
+
+class SearchTool(Tool):
+    name = "get_search"
+    description = "搜索公开资料，参数为查询关键词，如：人工智能 最新进展"
+    schema = {"type": "object", "properties": {"query": "string"}, "required": ["query"]}
+
+    def run(self, query: str) -> Observation:
+        data = {
+            "人工智能": "AI 是模拟智能行为的技术总称，含机器学习与深度学习。",
+            "机器学习": "ML 是从数据中自动学习规律的一类方法。",
+        }
+        for k, v in data.items():
+            if k in (query or ""):
+                return Observation(content=v)
+        return Observation(content=f"（Mock）未收录：{query}")

@@ -74,6 +74,32 @@ class OpenAIClient(LLMClient):
         return resp.choices[0].message.content
 
 
+class AnthropicClient(LLMClient):
+    """Anthropic Claude 后端（真实，需 ANTHROPIC_API_KEY）。"""
+
+    def __init__(self, api_key: str = "", model: str = "claude-3-5-sonnet-latest",
+                 max_cost: float = 1.0):
+        super().__init__(model=model, max_cost=max_cost)
+        from anthropic import Anthropic  # 延迟导入：未装 anthropic 不影响 Mock/导入
+        self._client = Anthropic(api_key=api_key or None)
+
+    def complete(self, messages: list, **kwargs) -> str:
+        # Anthropic 的 system 需单独传，且 messages 不含 system 角色
+        sys_msgs = [m["content"] for m in messages if m.get("role") == "system"]
+        conv = [m for m in messages if m.get("role") != "system"]
+        max_tokens = kwargs.pop("max_tokens", 1024)
+        resp = self._client.messages.create(
+            model=self.model,
+            system="\n".join(sys_msgs) if sys_msgs else None,
+            messages=conv,
+            max_tokens=max_tokens,
+            **kwargs,
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+        self._accrue(resp.usage.input_tokens, resp.usage.output_tokens, unit_price=0.0)
+        return text
+
+
 class MockLLMClient(LLMClient):
     """离线演示/测试用决策器：不联网、不需要 Key。
 

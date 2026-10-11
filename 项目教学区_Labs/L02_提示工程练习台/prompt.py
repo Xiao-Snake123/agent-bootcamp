@@ -68,15 +68,56 @@ class PromptBuilder:
         return msgs
 
 
-def truncate_to_tokens(text: str, max_tokens: int, approx_chars_per_token: float = 4.0) -> str:
-    """极简截断：按"字数 / 每 token 字符数"估算，超过上限则截断并加省略号。
+try:
+    import tiktoken
+    _ENC = tiktoken.get_encoding("cl100k_base")
+    def _count_tokens(text: str) -> int:
+        return len(_ENC.encode(text))
+except Exception:
+    _ENC = None
+    def _count_tokens(text: str) -> int:
+        # 离线兜底：中文约 1–2 字/token，英文约 4 字符/token，取近似
+        return max(1, int(len(text) / 4))
 
-    真实场景应调用 tokenizer（如 tiktoken）精确计 token，这里用近似便于离线演示。
+
+def truncate_to_tokens(text: str, max_tokens: int) -> str:
+    """按 token 上限截断（优先 tiktoken 精确计数，不可用时退化为字数近似）。
+
+    真实场景必须按 token 截断而非字符：中文一个字常占 1–2 token，
+    纯字数近似会让长中文文本悄悄超出上下文窗口（呼应 K2 lost-in-the-middle）。
     """
-    est = int(max_tokens * approx_chars_per_token)
-    if len(text) <= est:
+    if _count_tokens(text) <= max_tokens:
         return text
-    return text[:est] + "…（已截断）"
+    lo, hi = 0, len(text)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if _count_tokens(text[:mid]) <= max_tokens:
+            lo = mid
+        else:
+            hi = mid - 1
+    return text[:lo] + "…（已截断）"
+
+
+def estimate_cache_savings(system_prompt: str, n_rounds: int, query_text: str = "") -> dict:
+    """离线估算 prompt caching 的收益（不依赖真实 API）。
+
+    机制：Agent 每轮都把同一段稳定 system 重发给模型。开启 caching 后，
+    仅第一次计 system 的写入成本，后续轮次命中缓存（cache_read）只计 query。
+    这里用 token 计数演示"省了多少"。
+    """
+    sys_tok = _count_tokens(system_prompt)
+    q_tok = _count_tokens(query_text)
+    no_cache = n_rounds * (sys_tok + q_tok)
+    with_cache = sys_tok + n_rounds * q_tok
+    saved = no_cache - with_cache
+    return {
+        "system_tokens": sys_tok,
+        "per_round_tokens": sys_tok + q_tok,
+        "no_cache_total": no_cache,
+        "with_cache_total": with_cache,
+        "saved_tokens": saved,
+        "saved_pct": round(100 * saved / no_cache, 1) if no_cache else 0.0,
+    }
 
 
 def parse_json_block(text: str) -> dict:

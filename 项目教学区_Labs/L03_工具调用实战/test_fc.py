@@ -11,7 +11,7 @@ for _p in (_PARENT, _HERE):
         sys.path.insert(0, _p)
 
 from agent_core.tools import ToolRegistry
-from tools_fc import WeatherTool, CalculatorTool
+from tools_fc import WeatherTool, CalculatorTool, SearchTool
 from fc import tools_to_openai_schema, FunctionCallingAgent
 from mock_fc import MockFunctionCaller
 
@@ -49,6 +49,19 @@ def test_parallel_calls():
     assert "calculator" in names and "get_weather" in names
 
 
+def test_search_tool():
+    """验收：search 工具被正确转 schema 并分发。"""
+    reg = ToolRegistry()
+    reg.register(SearchTool())
+    sch = tools_to_openai_schema(reg)
+    assert any(s["function"]["name"] == "get_search" for s in sch)
+    agent, _ = _build()
+    agent.tools.register(SearchTool())
+    final, traj = agent.run("帮我搜索人工智能的资料")
+    names = [s["action"]["name"] for s in traj if s["action"]]
+    assert "get_search" in names
+
+
 def test_param_validation_clean():
     """验收：工具对不合规参数返回 ok=False（dispatch 前已清洗/拒绝）。"""
     reg = ToolRegistry()
@@ -70,3 +83,11 @@ def test_unknown_tool_rejected():
     agent.llm = BadMock()
     final, traj = agent.run("随便做点什么")
     assert traj[0]["observation"] == "未知工具：nope"
+
+
+def test_tool_call_id_pairing():
+    """验收：并行多工具时每个 tool 消息配对了唯一且非空的 tool_call_id。"""
+    agent, _ = _build()
+    final, traj = agent.run("帮我算 23 * 17 并查上海天气")
+    ids = [s["action"]["tool_call_id"] for s in traj if s["action"]]
+    assert ids and len(ids) == len(set(ids))

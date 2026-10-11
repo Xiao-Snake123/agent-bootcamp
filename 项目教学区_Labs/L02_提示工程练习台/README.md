@@ -27,8 +27,18 @@
 ```
 保存后运行 `python main.py`，看 `[你的提示]` 是否吐出合规 JSON（对比 `[BAD 提示]` 的自由发挥）。
 
+## 消息组装示意
+```mermaid
+flowchart LR
+    S[system:角色+约束+caching] --> F[few-shot:user/assistant 对]
+    F --> Q[user:真实 query]
+    Q --> M[model 生成]
+```
+顺序固定为 system → shots → query；长 system 在中间段信息易丢失（lost-in-the-middle），且每轮重发——这正是 prompt caching 要优化的稳定前缀（见 ⑦）。
+
 ## 验收标准
 - [ ] 能说出上下文窗口为什么是硬上限（含 lost-in-the-middle）
+- [ ] 能解释 prompt caching 为何能降本（⑦ 演示）
 - [ ] `PromptBuilder` 生成的 messages 顺序正确（system → shots → query）
 - [ ] 能按 K2 模板写出一条结构化提示，并让其产出 JSON
 - [ ] `pytest test_prompt.py` 全绿

@@ -10,7 +10,8 @@
 - **陷阱④ 不要求结构化输出**：早期若让模型自由发挥，L1 的 `_parse` 会失败、循环崩。我们用 `with_structured_output` 把"只输出 JSON + schema"写进 system，降低解析失败率。
 - **陷阱① 忽视上下文窗口 / lost-in-the-middle**：`truncate_to_tokens` 演示了超长文本必须截断；真实应用应接 tokenizer（如 tiktoken）。
 - **陷阱⑤ prompt 里算数**：`DemoLLM` 不做任何计算，算数仍交 L1 的 `CalculatorTool`，提示只负责"指挥"。
-- **前沿点·prompt caching**：`prompt.py` 注记了稳定 system + few-shot 前缀应走缓存降本——Agent 每轮重发 system，这笔账不能不算。
+- **前沿点·prompt caching（已落成可运行估算）**：`prompt.py` 新增 `estimate_cache_savings`，离线演示"稳定 system 被缓存后，多轮对话只在第一次计 system 的 token"。真实 API 里这笔账体现为 `cache_creation`/`cache_read` 两类低价 token——Agent 每轮重发 system，命中缓存后成本可降数倍。这是 K02 强调的"成本护栏"在提示层的具体抓手。
+- **真实 token 截断**：`truncate_to_tokens` 改用 tiktoken 精确计数（不可用时退化为字数近似）。中文一个字常占 1–2 token，纯字数近似会低估、导致长中文文本悄悄超出窗口——这正是 K2 "lost-in-the-middle" 风险的前端防线。
 
 ## 4. 若重做会改什么？
 - 用真实 tokenizer（tiktoken）替换 `truncate_to_tokens` 的字数近似，精确对齐 token 上限。

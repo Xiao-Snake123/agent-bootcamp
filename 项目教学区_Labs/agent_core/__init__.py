@@ -10,16 +10,18 @@
 设计原则见 design_docs/03 §2：接口稳定、模块可插拔、本地优先。
 """
 
-from .llm import LLMClient, OpenAIClient, MockLLMClient, CostLimitError, Usage
+from .llm import LLMClient, OpenAIClient, AnthropicClient, MockLLMClient, CostLimitError, Usage
 from .tools import Tool, Observation, ToolRegistry, ToolError
-from .memory import Memory, BufferMemory
+from .memory import Memory, BufferMemory, LongTermMemory
 from .agent import Agent, Trajectory, Step
 from .registry import Registry
+from .config import build_llm, load_env, get
 
 __all__ = [
-    "LLMClient", "OpenAIClient", "MockLLMClient", "CostLimitError", "Usage",
+    "LLMClient", "OpenAIClient", "AnthropicClient", "MockLLMClient", "CostLimitError", "Usage",
     "Tool", "Observation", "ToolRegistry", "ToolError",
-    "Memory", "BufferMemory",
+    "Memory", "BufferMemory", "LongTermMemory",
     "Agent", "Trajectory", "Step",
     "Registry",
+    "build_llm", "load_env", "get",
 ]
