@@ -1,0 +1,40 @@
+---
+import { chapters } from '../data/chapters';
+const total = chapters.length;
+---
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Bootcamp · Agent 工程化深度训练营</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">Agent Bootcamp</span>
+    <a href="/curriculum">课程地图</a>
+    <a href="/ask">求职问答助手</a>
+  </nav>
+
+  <section class="hero">
+    <h1>揭秘 Agent 全流程工程化实现</h1>
+    <p>面向有 LLM / Python 基础的工程师：从推理-行动循环到生产化 SRE，{total} 章深度拆解，原理 → 伪代码 → 可运行代码 → 工业差异 → 论文 → 面试考点。最终用这些文档驱动一个求职复习 Agent 问答助手。</p>
+    <a class="btn" href="/curriculum">开始学习</a>
+    <a class="btn ghost" href="/ask" style="margin-left:10px">试用问答助手</a>
+  </section>
+
+  <div class="wrap">
+    <h2>核心机制篇（{total} 章）</h2>
+    <p class="meta">难度 ★ 越多越深；点击进入章节详情。</p>
+    <div class="grid">
+      {chapters.map((c) => (
+        <a class="card" href={`/modules/${c.slug}`}>
+          <h3>{c.title}</h3>
+          <div class="meta">第 {c.slug} 章 · 难度 {'★'.repeat(c.difficulty)}</div>
+          <p>{c.intro}</p>
+        </a>
+      ))}
+    </div>
+  </div>
+</body>
+</html>

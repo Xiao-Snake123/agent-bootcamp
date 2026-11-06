@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent 求职复习问答助手（原型）</title>
+  <style>
+    :root { --bg:#0d1117; --card:#161b22; --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+           background:var(--bg); color:var(--fg); }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 20px; }
+    h1 { font-size: 22px; }
+    .sub { color: var(--muted); margin: 6px 0 24px; }
+    .row { display:flex; gap:8px; }
+    input { flex:1; padding:12px 14px; border-radius:8px; border:1px solid #30363d;
+            background:#0d1117; color:var(--fg); font-size:15px; }
+    button { padding:12px 18px; border:0; border-radius:8px; background:var(--accent);
+             color:#0d1117; font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:default; }
+    .card { background:var(--card); border:1px solid #30363d; border-radius:10px;
+            padding:18px; margin-top:18px; white-space:pre-wrap; line-height:1.7; }
+    .src { color:var(--muted); font-size:13px; margin-top:10px; }
+    .tag { display:inline-block; background:#21262d; border:1px solid #30363d;
+           border-radius:6px; padding:2px 8px; margin:3px 4px 0 0; font-size:12px; }
+    .hint { color:var(--muted); font-size:12px; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Agent 开发 · 求职复习问答助手</h1>
+    <div class="sub">基于《核心机制篇》12 章深度文档的 RAG 原型（BM25 检索 + DeepSeek 生成）</div>
+    <div class="row">
+      <input id="q" placeholder="例如：Agent 如何防止死循环？ / RAG 为什么需要 rerank？" />
+      <button id="btn" onclick="ask()">提问</button>
+    </div>
+    <div class="hint">提示：当前 .env 未配置 DEEPSEEK_API_KEY 时为演示模式（只展示检索片段）。</div>
+    <div id="out"></div>
+  </div>
+
+  <script>
+    async function ask() {
+      const q = document.getElementById('q').value.trim();
+      if (!q) return;
+      const btn = document.getElementById('btn');
+      btn.disabled = true; btn.textContent = '检索中…';
+      const out = document.getElementById('out');
+      out.innerHTML = '';
+      try {
+        const r = await fetch('http://localhost:8000/ask?q=' + encodeURIComponent(q));
+        const d = await r.json();
+        let html = '<div class="card">' + escapeHtml(d.answer) + '</div>';
+        if (d.sources && d.sources.length) {
+          html += '<div class="src">参考章节：' +
+            d.sources.map(s => '<span class="tag">' + escapeHtml(s.chapter + ' / ' + s.section) + '</span>').join('') +
+            '</div>';
+        }
+        out.innerHTML = html;
+      } catch (e) {
+        out.innerHTML = '<div class="card">请求失败：' + e + '<br/>请确认后端已启动（uvicorn backend.rag_server:app --port 8000）。</div>';
+      } finally {
+        btn.disabled = false; btn.textContent = '提问';
+      }
+    }
+    function escapeHtml(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+    document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+---
+// 站内求职复习问答助手前端页；后端 rag_server 独立跑在 :8000
+const API = 'http://localhost:8000/ask';
+---
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>求职问答助手 · Agent Bootcamp</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">Agent Bootcamp</span>
+    <a href="/">首页</a>
+    <a href="/curriculum">课程地图</a>
+  </nav>
+  <div class="wrap">
+    <h1>求职复习 Agent 问答助手</h1>
+    <p class="meta">基于《核心机制篇》12 章深度文档的 RAG 检索 + DeepSeek 生成。需先启动后端（见 backend/rag_server.py）。</p>
+    <div class="ask-box">
+      <input id="q" placeholder="例如：Agent 如何防止死循环？ / RAG 为什么需要 rerank？" />
+      <button id="btn" onclick="ask()">提问</button>
+    </div>
+    <div id="out"></div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8000/ask';
+    async function ask() {
+      const q = document.getElementById('q').value.trim();
+      if (!q) return;
+      const btn = document.getElementById('btn');
+      btn.disabled = true; btn.textContent = '检索中…';
+      const out = document.getElementById('out');
+      out.innerHTML = '';
+      try {
+        const r = await fetch(API + '?q=' + encodeURIComponent(q));
+        const d = await r.json();
+        let html = '<div class="answer">' + escapeHtml(d.answer) + '</div>';
+        if (d.sources && d.sources.length) {
+          html += '<div class="src">参考章节：' +
+            d.sources.map(s => '<span class="tag">' + escapeHtml(s.chapter + ' / ' + s.section) + '</span>').join('') +
+            '</div>';
+        }
+        if (d.vector_mode) html += '<div class="src">检索模式：' + d.retriever + ' / ' + d.vector_mode + '</div>';
+        out.innerHTML = html;
+      } catch (e) {
+        out.innerHTML = '<div class="answer">请求失败：' + e + '<br/>请确认后端已启动（cd backend && uvicorn rag_server:app --port 8000）。</div>';
+      } finally {
+        btn.disabled = false; btn.textContent = '提问';
+      }
+    }
+    function escapeHtml(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+    document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+  </script>
+</body>
+</html>

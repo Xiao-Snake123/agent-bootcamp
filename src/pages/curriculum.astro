@@ -1,0 +1,32 @@
+---
+import { chapters } from '../data/chapters';
+---
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>课程地图 · Agent Bootcamp</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">Agent Bootcamp</span>
+    <a href="/">首页</a>
+    <a href="/ask">求职问答助手</a>
+  </nav>
+  <div class="wrap">
+    <h1>课程地图</h1>
+    <p class="meta">按 Agent 从一行目标到生产上线的端到端链路组织。</p>
+    <div class="grid">
+      {chapters.map((c) => (
+        <a class="card" href={`/modules/${c.slug}`}>
+          <h3><span class="tag">第 {c.slug} 章</span></h3>
+          <h3 style="margin-top:8px">{c.title}</h3>
+          <div class="meta">难度 {'★'.repeat(c.difficulty)}</div>
+          <p>{c.intro}</p>
+        </a>
+      ))}
+    </div>
+  </div>
+</body>
+</html>

@@ -14,3 +14,13 @@ __pycache__/
 .pytest_cache/
 *_checkpoint.json
 _cp_test.json
+
+# 本地向量库（Qdrant 持久化，运行产物）
+backend/qdrant_storage/
+
+# 前端（Astro）依赖与构建产物
+node_modules/
+dist/
+
+# Astro 缓存
+.astro/

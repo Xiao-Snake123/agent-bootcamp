@@ -1,0 +1,36 @@
+---
+import { chapters } from '../../data/chapters';
+// 构建期读取 core-mechanics 下的 md，渲染为章节详情
+const modules = import.meta.glob('/content/核心机制篇/*.md', { eager: true });
+
+export function getStaticPaths() {
+  return chapters.map((c) => ({ params: { slug: c.slug } }));
+}
+
+const { slug } = Astro.params;
+const chapter = chapters.find((c) => c.slug === slug);
+const entry = Object.entries(modules).find(([path]) => path.includes(chapter.file));
+const Content = entry ? entry[1].Content : null;
+---
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{chapter.title} · Agent Bootcamp</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">Agent Bootcamp</span>
+    <a href="/">首页</a>
+    <a href="/curriculum">课程地图</a>
+    <a href="/ask">问答助手</a>
+  </nav>
+  <div class="wrap">
+    <a href="/curriculum" class="meta">← 课程地图</a>
+    <div class="prose">
+      {Content ? <Content /> : <p>章节内容待生成（{chapter.file}）。</p>}
+    </div>
+  </div>
+</body>
+</html>
