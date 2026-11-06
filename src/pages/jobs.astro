@@ -1,0 +1,33 @@
+---
+const docs = import.meta.glob('/content/求职篇/*.md', { eager: true });
+const items = Object.entries(docs).map(([p, m]) => ({
+  name: p.split('/').pop().replace('.md', ''),
+  Content: m.Content,
+}));
+---
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>求职篇 · Agent Bootcamp</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">Agent Bootcamp</span>
+    <a href="/">首页</a>
+    <a href="/curriculum">课程地图</a>
+    <a href="/ask">问答助手</a>
+    <a href="/jobs">求职篇</a>
+  </nav>
+  <div class="wrap">
+    <h1>求职篇</h1>
+    <p class="meta">配套《核心机制篇》12 章：知识点图谱（分层 / 依赖 / 高频考点 / 复习路线）+ 面试题库（每章 概念 / 设计 / 代码 / 故障 4 类题）。可直接用于复习与模拟面试。</p>
+    {items.map(({ name, Content }) => (
+      <div class="prose">
+        <Content />
+      </div>
+    ))}
+  </div>
+</body>
+</html>

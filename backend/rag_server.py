@@ -27,7 +27,7 @@ except ImportError:
 app = FastAPI(title="Agent Bootcamp 求职复习问答助手(原型)")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-CONTENT_DIR = Path(__file__).resolve().parent.parent / "content" / "核心机制篇"
+CONTENT_DIR = Path(__file__).resolve().parent.parent / "content"
 QDRANT_PATH = Path(__file__).resolve().parent / "qdrant_storage"
 COLLECTION = "agent_bootcamp"
 
@@ -49,7 +49,7 @@ def _mk(chapter, section, body, fp):
 
 def load_chunks():
     chunks = []
-    for fp in sorted(glob.glob(str(CONTENT_DIR / "*.md"))):
+    for fp in sorted(glob.glob(str(CONTENT_DIR / "**" / "*.md"), recursive=True)):
         text = Path(fp).read_text(encoding="utf-8")
         m = re.search(r"^#\s*(.+)$", text, re.M)
         chapter = m.group(1).strip() if m else Path(fp).stem
