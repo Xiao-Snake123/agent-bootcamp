@@ -28,6 +28,11 @@ const Content = entry ? entry[1].Content : null;
   </nav>
   <div class="wrap">
     <a href="/curriculum" class="meta">← 课程地图</a>
+    <div class="card" style="margin-top:16px">
+      <strong>配套可运行 demo（阶段 3）</strong>
+      <p class="meta">接 DeepSeek 真跑；加 <code>--offline</code> 可零成本自检。见 <code>demos/README.md</code>。</p>
+      <p><code>python demos/{chapter.demo}</code></p>
+    </div>
     <div class="prose">
       {Content ? <Content /> : <p>章节内容待生成（{chapter.file}）。</p>}
     </div>

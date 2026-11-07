@@ -48,3 +48,18 @@ Skill = 更高层抽象：把"调哪些工具 + 用什么提示 + 什么顺序"�
 - **把 MCP 当万能胶** → 忽视鉴权透传与错误传播，工具报错被吞。
 - **Skill 过度封装** → 黑盒化导致调试困难、粒度不匹配。
 - **FC schema 与 MCP 描述不一致** → 模型按 FC 填参，MCP server 解析失败。
+
+## 8.10 配套可运行 demo
+`demos/demo_08_mcp_skill.py`（模块：`agent_core.ToolRegistry` + `tutorial/code/mcp_demo/server.py`）：
+
+```bash
+python demos/demo_08_mcp_skill.py --offline   # 离线自检
+python demos/demo_08_mcp_skill.py             # 接 DeepSeek 真跑
+```
+以子进程拉起真实 stdio JSON-RPC 2.0 MCP server，依次 `initialize` →
+`notifications/initialized` → `tools/list` → `tools/call`；把远端 `inputSchema`
+动态映射成 `ToolRegistry` 的 Tool，再由模型决定是否调用；同时解析
+`skill_demo/SKILL.md` 的 frontmatter 演示 Skill 的元数据驱动。
+
+关键工程点：MCP 错误转成 `Observation(ok=False)` 回传而非抛异常打断主循环；
+server 需沙箱隔离并设超时/熔断（对应 8.9 的常见坑）。
